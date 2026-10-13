@@ -34,6 +34,12 @@ td input,td select{width:100%}
 .w{color:var(--g)}.a{color:var(--a)}
 .ov{overflow-x:auto}
 .fl{cursor:pointer;padding:6px 9px;border:1px solid #2a323c;border-radius:6px;display:inline-block}
+.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cd{padding:8px 0;position:relative}
+.cd.on{background:var(--g);color:#08130d;border-color:var(--g)}
+.cd.td{border-color:var(--a)}
+.cd i{position:absolute;top:2px;right:4px;font:10px monospace;color:var(--a);font-style:normal}
+.cd.on i{color:#08130d}
 @media(max-width:800px){body{flex-direction:column}aside{width:auto;flex-direction:row;flex-wrap:wrap}}
 </style></head>
 <body><aside id="sb"></aside><main id="m"></main>
@@ -45,6 +51,7 @@ const SP=[['News calendar',['No news','Medium','High']],['Asia range marked'],['
 const TABS=[['dev','1  Development area'],['bt','2  Backtesting'],['acc','3  Prop accounts'],['daily','4  Daily Log'],['wk','Weekend Review']];
 const CATS=['Evaluation fee','Payout','Subscription','Other'];
 let S={tab:'daily',date:new Date().toLocaleDateString('en-CA'),dev:[],bt:[],acc:[],tx:[],days:{}};
+const TODAY=new Date().toLocaleDateString('en-CA');
 const uid=()=>Math.random().toString(36).slice(2,9),now=()=>new Date().toTimeString().slice(0,5);
 const D=()=>S.days[S.date]??={chk:{},stage:0,ents:[],ideas:[]};
 const get=p=>p.split('.').reduce((o,k)=>o?.[k],S);
@@ -66,6 +73,8 @@ const addImgs=async(p,fs)=>{const a=get(p);for(const f of fs)if(f.type.startsWit
 const csv=x=>{x.split(/\r?\n/).slice(1).forEach(l=>{const c=l.split(',');if(c.length<3)return;const d=c.slice(1,-1).join(','),amt=c[c.length-1];if(S.tx.some(t=>t.date==c[0]&&t.desc==d&&t.amt==amt))return;const cat=/payout|withdraw/i.test(d)?'Payout':/eval|challenge|funded|prop|fee/i.test(d)?'Evaluation fee':/tradingview|subscri/i.test(d)?'Subscription':'Other';S.tx.push({id:uid(),date:c[0],acc:'',cat,desc:d,amt})});save();render()};
 const A={
 tab:d=>{S.tab=d.v;render()},
+day:d=>{S.date=d.v;S.cal=d.v.slice(0,7);render()},
+mo:d=>{const[y,m]=(S.cal||S.date.slice(0,7)).split('-').map(Number),t=new Date(y,m-1+ +d.v,1);S.cal=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');render()},
 stage:d=>{D().stage=+d.v;save();render()},
 addEnt:()=>{D().ents.push({id:uid(),time:now(),ph:'Setup forming',tags:'',note:'',img:[],rev:false});save();render()},
 rev:d=>{const e=D().ents.find(x=>x.id==d.v);e.rev=!e.rev;save();render()},
@@ -85,8 +94,10 @@ document.addEventListener('paste',e=>{const b=e.target.closest?.('[data-ip]'),fs
 document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{const b=e.target.closest?.('[data-ip]');if(b){e.preventDefault();addImgs(b.dataset.ip,e.dataTransfer.files)}});
 const en=(e,p)=>`<div class="ent"><div class="tm">${inp(p+'.time','time')}</div><div class="card pr${e.rev?' rev':''}" style="flex:1" data-ip="${p}.img"><div class="th">${e.img.map((s,j)=>`<img src="${s}" title="Click to remove" data-a="rmimg" data-p="${p}.img" data-v="${j}">`).join('')}<label class="lab"><input type="file" accept="image/*" multiple hidden data-f="img" data-p="${p}.img"><span class="fl">+ Screenshots</span> or paste / drop here</label></div><div><textarea data-k="${p}.note" placeholder="What do you see now?">${esc(e.note)}</textarea>${inp(p+'.tags','text','tags, comma separated')}<div class="g2">${sel(p+'.ph',PH)}<button data-a="mic" data-p="${p}.note">Mic</button><button data-a="rev" data-v="${e.id}">Swap sides</button><button class="i" data-a="idea" data-v="${e.id}">Mark as thought / idea</button><button data-a="del" data-p="days.${S.date}.ents" data-v="${e.id}">Delete</button></div></div></div></div>`;
+const cal=()=>{const m=S.cal||S.date.slice(0,7),[y,mo]=m.split('-').map(Number),f=new Date(y,mo-1,1),off=(f.getDay()+6)%7,n=new Date(y,mo,0).getDate();let c='';for(let i=0;i<off;i++)c+='<span></span>';for(let d=1;d<=n;d++){const k=`${m}-${String(d).padStart(2,'0')}`,v=S.days[k],cnt=v?v.ents.length+v.ideas.length:0;c+=`<button class="cd${k==S.date?' on':''}${k==TODAY?' td':''}" data-a="day" data-v="${k}">${d}${cnt?`<i>${cnt}</i>`:''}</button>`}
+return `<div class="card" style="max-width:380px"><div class="bar" style="justify-content:space-between"><button data-a="mo" data-v="-1">&lt;</button><b>${f.toLocaleString('en',{month:'long',year:'numeric'})}</b><button data-a="mo" data-v="1">&gt;</button></div><div class="cg">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span class="lab">${x}</span>`).join('')}${c}</div></div>`};
 const daily=()=>{const d=D(),P=`days.${S.date}.`,vw=d.chk.v2,m=S.bt.filter(r=>vw&&r.vwap==vw),w=m.filter(r=>r.res=='Win').length;
-return `<h1>Daily Log</h1><div class="bar"><input type="date" id="dt" value="${S.date}"><button class="p" data-a="addEnt">+ Add entry</button><button data-a="mdx">Export day for AI (.md)</button></div>
+return `<h1>Daily Log</h1>${cal()}<div class="bar"><b>${S.date}</b><button data-a="day" data-v="${TODAY}">Today</button><button class="p" data-a="addEnt">+ Add entry</button><button data-a="mdx">Export day for AI (.md)</button></div>
 <div class="card"><div class="lab">Session open</div><table>${SP.map(([n,o],i)=>`<tr><td style="width:30px"><input type="checkbox" data-k="${P}chk.s${i}"${d.chk['s'+i]?' checked':''}><td>${n}<td>${o?sel(P+'chk.v'+i,['',...o]):i==4?inp(P+'chk.v4','text','your rule here'):''}`).join('')}</table>${vw?`<p class="a">Likely today: ${m.length?`${m.length} logged sessions with VWAP ${vw}, ${Math.round(w/m.length*100)}% wins, avg R ${avg(nums(m))}`:'no logged sessions with this VWAP state yet (add them in Backtesting)'}</p>`:''}</div>
 <div class="card"><div class="lab">Where are you now</div><div class="st">${ST.map((s,i)=>`<button class="${d.stage==i?'on':''}" data-a="stage" data-v="${i}">${i+1}. ${s[0]}</button>`).join('')}</div><p>${ST[d.stage][1]}</p></div>
 ${PH.map(ph=>{const L=d.ents.map((e,i)=>[e,i]).filter(([e])=>e.ph==ph).sort((a,b)=>a[0].time<b[0].time?-1:1);return L.length?`<div class="lab" style="margin:16px 0 8px">${ph} · ${L.length}</div>`+L.map(([e,i])=>en(e,P+'ents.'+i)).join(''):''}).join('')}
