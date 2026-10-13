@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KAY OS</title>
+<style>
+:root{--bg:#0e1116;--p:#12171d;--b:#1d232b;--t:#d7dde5;--m:#8a95a1;--g:#3ddc97;--r:#ff8a8a;--a:#f0b429}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font:14px system-ui,sans-serif;display:flex;min-height:100vh}
+aside{width:210px;flex:none;background:#0b0e12;border-right:1px solid var(--b);padding:18px 12px;display:flex;flex-direction:column;gap:4px}
+aside h2{font:700 15px monospace;letter-spacing:.08em;color:#fff;margin:0 0 14px 10px}
+aside button.n{border:0;background:none;text-align:left;padding:10px 12px;border-radius:6px;color:var(--m)}
+aside button.n.on{background:#1a212a;color:#fff}
+main{flex:1;min-width:0;padding:20px 24px 60px}
+h1{margin:0 0 14px;font-size:21px;color:#fff}
+.card{background:var(--p);border:1px solid var(--b);border-radius:8px;padding:14px;margin-bottom:14px}
+.lab{font:11px monospace;color:var(--m);text-transform:uppercase;letter-spacing:.06em}
+button,select,input,textarea{font:inherit;color:var(--t);background:#0b0e12;border:1px solid #2a323c;border-radius:6px;padding:6px 9px}
+button{cursor:pointer;background:#151a21}
+button.p{background:var(--g);border-color:var(--g);color:#08130d}
+button.i{border-color:#6b5a1e;color:var(--a)}
+textarea{width:100%;min-height:90px;resize:both;max-width:100%}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.st{display:flex;flex-wrap:wrap;gap:6px}
+.st button.on{background:var(--g);color:#08130d;border-color:var(--g)}
+.ent{display:flex;gap:12px;margin-bottom:10px}
+.tm{width:92px;flex:none;color:var(--g);font:14px monospace}
+.pr{display:flex;gap:12px;flex-wrap:wrap;flex:1;min-width:0}
+.pr.rev{flex-direction:row-reverse}
+.pr>div{flex:1 1 260px;min-width:0}
+.th img{width:100%;border-radius:6px;border:1px solid var(--b);margin-bottom:6px;display:block;cursor:pointer}
+.g2{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:4px;border-bottom:1px solid var(--b);text-align:left}
+th{font:11px monospace;color:var(--m);font-weight:400}
+td input,td select{width:100%}
+.w{color:var(--g)}.a{color:var(--a)}
+.ov{overflow-x:auto}
+.fl{cursor:pointer;padding:6px 9px;border:1px solid #2a323c;border-radius:6px;display:inline-block}
+@media(max-width:800px){body{flex-direction:column}aside{width:auto;flex-direction:row;flex-wrap:wrap}}
+</style></head>
+<body><aside id="sb"></aside><main id="m"></main>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const PH=['Pre-session','Setup forming','Trade','Management'];
+const ST=[['Pre-session','Check news, mark the Asia range'],['Open profile','2AM candle vs VWAP: Open / Above / Below'],['Expectation','Recall what this profile usually does'],['Wait','First D2 band mitigation'],['Trigger','1M BOS after mitigation. 15M EMA Strong or Weak?'],['Management','50% off at VWAP, runner on the rest'],['Exit / flip','Continuation BOS after D2 mitigation: exit and flip to D2 Continuation'],['Result','Log R, plan followed, deviation']];
+const SP=[['News calendar',['No news','Medium','High']],['Asia range marked'],['VWAP state at 2AM',['Open','Above','Below']],['Expected profile',['A','B','C','Unsure']],['Risk reminder']];
+const TABS=[['dev','1  Development area'],['bt','2  Backtesting'],['acc','3  Prop accounts'],['daily','4  Daily Log'],['wk','Weekend Review']];
+const CATS=['Evaluation fee','Payout','Subscription','Other'];
+let S={tab:'daily',date:new Date().toLocaleDateString('en-CA'),dev:[],bt:[],acc:[],tx:[],days:{}};
+const uid=()=>Math.random().toString(36).slice(2,9),now=()=>new Date().toTimeString().slice(0,5);
+const D=()=>S.days[S.date]??={chk:{},stage:0,ents:[],ideas:[]};
+const get=p=>p.split('.').reduce((o,k)=>o?.[k],S);
+const idb=()=>new Promise(r=>{const q=indexedDB.open('kayos',1);q.onupgradeneeded=()=>q.result.createObjectStore('k');q.onsuccess=()=>r(q.result)});
+const load=async()=>{const d=await idb();return new Promise(r=>{const q=d.transaction('k').objectStore('k').get('s');q.onsuccess=()=>r(q.result)})};
+let tm;const save=()=>{clearTimeout(tm);tm=setTimeout(async()=>{const d=await idb();d.transaction('k','readwrite').objectStore('k').put(S,'s')},300)};
+const set=(p,v)=>{const k=p.split('.'),l=k.pop();k.reduce((o,x)=>o[x],S)[l]=v;save()};
+const sel=(p,o)=>`<select data-k="${p}" data-r>${o.map(x=>`<option${x==get(p)?' selected':''}>${esc(x)}</option>`).join('')}</select>`;
+const inp=(p,t='text',ph='',r)=>`<input data-k="${p}" type="${t}" placeholder="${ph}" value="${esc(get(p))}"${r?' data-r':''}>`;
+const dl=(n,t,m)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:m}));a.download=n;a.click()};
+const avg=a=>a.length?(a.reduce((x,y)=>x+y)/a.length).toFixed(2):'-';
+const nums=a=>a.map(r=>parseFloat(r.r)).filter(x=>!isNaN(x));
+const W=s=>new Set((s||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>3));
+const TG=s=>(s||'').toLowerCase().split(',').map(x=>x.trim()).filter(Boolean);
+const allIdeas=()=>Object.entries(S.days).flatMap(([d,v])=>v.ideas.map(i=>({...i,d})));
+const seen=i=>{const a=W(i.text),ta=TG(i.tags);return allIdeas().filter(o=>o.id!=i.id&&(o.d<i.d||(o.d==i.d&&o.time<i.time))).filter(o=>{const b=W(o.text);let n=0;a.forEach(w=>b.has(w)&&n++);const u=a.size+b.size-n;return(u&&n/u>=.25)||TG(o.tags).filter(x=>ta.includes(x)).length>=2})};
+const shrink=f=>new Promise(r=>{const i=new Image();i.onload=()=>{const k=Math.min(1,1400/i.width),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/webp',.8))};i.src=URL.createObjectURL(f)});
+const addImgs=async(p,fs)=>{const a=get(p);for(const f of fs)if(f.type.startsWith('image/'))a.push(await shrink(f));save();render()};
+const csv=x=>{x.split(/\r?\n/).slice(1).forEach(l=>{const c=l.split(',');if(c.length<3)return;const d=c.slice(1,-1).join(','),amt=c[c.length-1];if(S.tx.some(t=>t.date==c[0]&&t.desc==d&&t.amt==amt))return;const cat=/payout|withdraw/i.test(d)?'Payout':/eval|challenge|funded|prop|fee/i.test(d)?'Evaluation fee':/tradingview|subscri/i.test(d)?'Subscription':'Other';S.tx.push({id:uid(),date:c[0],acc:'',cat,desc:d,amt})});save();render()};
+const A={
+tab:d=>{S.tab=d.v;render()},
+stage:d=>{D().stage=+d.v;save();render()},
+addEnt:()=>{D().ents.push({id:uid(),time:now(),ph:'Setup forming',tags:'',note:'',img:[],rev:false});save();render()},
+rev:d=>{const e=D().ents.find(x=>x.id==d.v);e.rev=!e.rev;save();render()},
+del:d=>{const a=get(d.p);a.splice(a.findIndex(x=>x.id==d.v),1);save();render()},
+rmimg:d=>{get(d.p).splice(+d.v,1);save();render()},
+idea:d=>{const a=D().ents,e=a.splice(a.findIndex(x=>x.id==d.v),1)[0];D().ideas.push({id:e.id,time:e.time,text:e.note,tags:e.tags,img:e.img});save();render()},
+back:d=>{const a=D().ideas,e=a.splice(a.findIndex(x=>x.id==d.v),1)[0];D().ents.push({id:e.id,time:e.time,ph:'Setup forming',tags:e.tags,note:e.text,img:e.img,rev:false});save();render()},
+add:d=>{const m={dev:{id:uid(),title:'',status:'Idea',body:''},bt:{id:uid(),date:S.date,vwap:'',profile:'',res:'',r:'',tags:'',notes:''},acc:{id:uid(),name:'',firm:'',size:'',phase:'',status:''},tx:{id:uid(),date:S.date,acc:'',cat:'Other',desc:'',amt:''}}[d.v];S[d.v].unshift(m);save();render()},
+mic:d=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Voice input needs Chrome, Edge or Safari');const r=new R();r.onresult=e=>{const el=document.querySelector(`[data-k="${d.p}"]`);el.value=(el.value+' '+e.results[0][0].transcript).trim();set(d.p,el.value)};r.start()},
+exp:()=>dl('kay-os-backup.json',JSON.stringify(S),'application/json'),
+mdx:()=>{const d=D();dl(`daily-log-${S.date}.md`,`# Daily log ${S.date}\n\n## Session open\n${SP.map(([n],i)=>`- ${d.chk['s'+i]?'[x]':'[ ]'} ${n}${d.chk['v'+i]?': '+d.chk['v'+i]:''}`).join('\n')}\n\nStage: ${ST[d.stage][0]}\n\n## Timeline\n${[...d.ents].sort((a,b)=>a.time<b.time?-1:1).map(e=>`### ${e.time} · ${e.ph}${e.tags?' · '+e.tags:''}\n${e.note}\n(${e.img.length} screenshots)`).join('\n\n')}\n\n## Thoughts and ideas\n${d.ideas.map(i=>{const m=seen({...i,d:S.date});return `- ${i.time} ${i.text} (${m.length?'seen '+m.length+' times before':'new'})`}).join('\n')}\n`,'text/markdown')}
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b)A[b.dataset.a]?.(b.dataset)});
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.k)set(t.dataset.k,t.type=='checkbox'?t.checked:t.value)});
+document.addEventListener('change',async e=>{const t=e.target;if(t.id=='dt'){S.date=t.value||S.date;return render()}if(t.dataset.r)render();if(t.type=='file'&&t.files.length){const f=t.dataset.f;if(f=='img')addImgs(t.dataset.p,t.files);else{const x=await t.files[0].text();if(f=='imp'){S={...S,...JSON.parse(x)};save();render()}else csv(x)}}});
+document.addEventListener('paste',e=>{const b=e.target.closest?.('[data-ip]'),fs=[...(e.clipboardData?.files||[])];if(b&&fs.length){e.preventDefault();addImgs(b.dataset.ip,fs)}});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{const b=e.target.closest?.('[data-ip]');if(b){e.preventDefault();addImgs(b.dataset.ip,e.dataTransfer.files)}});
+const en=(e,p)=>`<div class="ent"><div class="tm">${inp(p+'.time','time')}</div><div class="card pr${e.rev?' rev':''}" style="flex:1" data-ip="${p}.img"><div class="th">${e.img.map((s,j)=>`<img src="${s}" title="Click to remove" data-a="rmimg" data-p="${p}.img" data-v="${j}">`).join('')}<label class="lab"><input type="file" accept="image/*" multiple hidden data-f="img" data-p="${p}.img"><span class="fl">+ Screenshots</span> or paste / drop here</label></div><div><textarea data-k="${p}.note" placeholder="What do you see now?">${esc(e.note)}</textarea>${inp(p+'.tags','text','tags, comma separated')}<div class="g2">${sel(p+'.ph',PH)}<button data-a="mic" data-p="${p}.note">Mic</button><button data-a="rev" data-v="${e.id}">Swap sides</button><button class="i" data-a="idea" data-v="${e.id}">Mark as thought / idea</button><button data-a="del" data-p="days.${S.date}.ents" data-v="${e.id}">Delete</button></div></div></div></div>`;
+const daily=()=>{const d=D(),P=`days.${S.date}.`,vw=d.chk.v2,m=S.bt.filter(r=>vw&&r.vwap==vw),w=m.filter(r=>r.res=='Win').length;
+return `<h1>Daily Log</h1><div class="bar"><input type="date" id="dt" value="${S.date}"><button class="p" data-a="addEnt">+ Add entry</button><button data-a="mdx">Export day for AI (.md)</button></div>
+<div class="card"><div class="lab">Session open</div><table>${SP.map(([n,o],i)=>`<tr><td style="width:30px"><input type="checkbox" data-k="${P}chk.s${i}"${d.chk['s'+i]?' checked':''}><td>${n}<td>${o?sel(P+'chk.v'+i,['',...o]):i==4?inp(P+'chk.v4','text','your rule here'):''}`).join('')}</table>${vw?`<p class="a">Likely today: ${m.length?`${m.length} logged sessions with VWAP ${vw}, ${Math.round(w/m.length*100)}% wins, avg R ${avg(nums(m))}`:'no logged sessions with this VWAP state yet (add them in Backtesting)'}</p>`:''}</div>
+<div class="card"><div class="lab">Where are you now</div><div class="st">${ST.map((s,i)=>`<button class="${d.stage==i?'on':''}" data-a="stage" data-v="${i}">${i+1}. ${s[0]}</button>`).join('')}</div><p>${ST[d.stage][1]}</p></div>
+${PH.map(ph=>{const L=d.ents.map((e,i)=>[e,i]).filter(([e])=>e.ph==ph).sort((a,b)=>a[0].time<b[0].time?-1:1);return L.length?`<div class="lab" style="margin:16px 0 8px">${ph} · ${L.length}</div>`+L.map(([e,i])=>en(e,P+'ents.'+i)).join(''):''}).join('')}
+<div class="card"><div class="lab">Thoughts and ideas · ${d.ideas.length}</div>${d.ideas.map(i=>{const x=seen({...i,d:S.date});return `<div style="padding:10px 0;border-bottom:1px solid var(--b)"><span class="tm">${i.time}</span> ${esc(i.text)} <span class="lab">${esc(i.tags)}</span><div class="th">${i.img.map(s=>`<img src="${s}" style="max-width:260px">`).join('')}</div><span class="${x.length?'a':'w'}">${x.length?`Seen ${x.length} time${x.length>1?'s':''} before, last ${x.map(y=>y.d).sort().pop()}`:'New, no earlier match'}</span> <button data-a="back" data-v="${i.id}">Move back to timeline</button></div>`}).join('')||'<p class="lab">Nothing marked yet</p>'}</div>`};
+const bt=()=>{const n=S.bt.length,w=S.bt.filter(r=>r.res=='Win').length;return `<h1>Backtesting</h1><div class="bar"><button class="p" data-a="add" data-v="bt">+ Add session</button><span>${n} sessions · ${n?Math.round(w/n*100):0}% wins · avg R ${avg(nums(S.bt))}</span></div><div class="card ov"><table><tr><th>Date<th>VWAP<th>Profile<th>Result<th>R<th>Tags<th>Notes<th></tr>${S.bt.map((r,i)=>{const p='bt.'+i;return `<tr><td>${inp(p+'.date','date')}<td>${sel(p+'.vwap',['','Open','Above','Below'])}<td>${sel(p+'.profile',['','A','B','C'])}<td>${sel(p+'.res',['','Win','Loss','BE'])}<td>${inp(p+'.r','number','','r')}<td>${inp(p+'.tags')}<td>${inp(p+'.notes')}<td><button data-a="del" data-p="bt" data-v="${r.id}">x</button>`}).join('')}</table></div>`};
+const acc=()=>{const sum=a=>a.reduce((s,t)=>s+(parseFloat(t.amt)||0),0),po=sum(S.tx.filter(t=>t.cat=='Payout')),co=sum(S.tx.filter(t=>t.cat!='Payout'));
+return `<h1>Prop accounts</h1><div class="bar"><button class="p" data-a="add" data-v="acc">+ Account</button></div><div class="card ov"><table><tr><th>Name<th>Firm<th>Size<th>Phase<th>Status<th></tr>${S.acc.map((r,i)=>{const p='acc.'+i;return `<tr><td>${inp(p+'.name')}<td>${inp(p+'.firm')}<td>${inp(p+'.size')}<td>${sel(p+'.phase',['','Evaluation','Funded'])}<td>${sel(p+'.status',['','Active','Passed','Failed','Closed'])}<td><button data-a="del" data-p="acc" data-v="${r.id}">x</button>`}).join('')}</table></div>
+<h1>Finance</h1><div class="bar"><button class="p" data-a="add" data-v="tx">+ Transaction</button><label><input type="file" accept=".csv" hidden data-f="csv"><span class="fl">Import bank CSV (date,description,amount)</span></label><span>Payouts ${po.toFixed(2)} · Costs ${co.toFixed(2)} · Net ${(po+co).toFixed(2)}</span></div><p class="lab">Expenses negative, payouts positive</p>
+<div class="card ov"><table><tr><th>Date<th>Account<th>Category<th>Description<th>Amount<th></tr>${S.tx.map((r,i)=>{const p='tx.'+i;return `<tr><td>${inp(p+'.date','date')}<td>${sel(p+'.acc',['',...S.acc.map(a=>a.name)])}<td>${sel(p+'.cat',CATS)}<td>${inp(p+'.desc')}<td>${inp(p+'.amt','number','','r')}<td><button data-a="del" data-p="tx" data-v="${r.id}">x</button>`}).join('')}</table></div>`};
+const dev=()=>`<h1>Development area</h1><div class="bar"><button class="p" data-a="add" data-v="dev">+ Note</button></div>${S.dev.map((r,i)=>{const p='dev.'+i;return `<div class="card">${inp(p+'.title','text','Title')} ${sel(p+'.status',['Idea','Testing','Done'])} <button data-a="del" data-p="dev" data-v="${r.id}">Delete</button><textarea data-k="${p}.body" placeholder="Details, rules, questions">${esc(r.body)}</textarea></div>`}).join('')}`;
+const wk=()=>{const s=new Date(new Date(S.date)-6*864e5).toISOString().slice(0,10),I=allIdeas().filter(i=>i.d>=s&&i.d<=S.date).map(i=>({...i,n:seen(i).length})).sort((a,b)=>b.n-a.n),T={};
+Object.entries(S.days).filter(([d])=>d>=s&&d<=S.date).forEach(([,v])=>v.ents.concat(v.ideas).forEach(x=>TG(x.tags).forEach(t=>T[t]=(T[t]||0)+1)));
+return `<h1>Weekend Review</h1><p class="lab">7 days to ${S.date}</p><div class="card"><div class="lab">Thoughts and ideas, most repeated first</div>${I.map(i=>`<p><span class="a">${i.n?'seen '+i.n+' times before':'new'}</span> ${i.d} ${i.time} · ${esc(i.text)}</p>`).join('')||'<p>None this week</p>'}</div><div class="card"><div class="lab">Tags this week</div>${Object.entries(T).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<span class="lab" style="margin-right:12px">${esc(t)} x${n}</span>`).join('')||'<p>No tags yet</p>'}</div>`};
+const render=()=>{$('sb').innerHTML=`<h2>KAY OS</h2>`+TABS.map(([k,n])=>`<button class="n${S.tab==k?' on':''}" data-a="tab" data-v="${k}">${n}</button>`).join('')+`<div style="margin-top:auto" class="lab">Backup</div><button data-a="exp">Export all (.json)</button><label><input type="file" accept=".json" hidden data-f="imp"><span class="fl" style="margin-top:4px">Import backup</span></label>`;$('m').innerHTML={dev,bt,acc,daily,wk}[S.tab]()};
+load().then(s=>{if(s)S={...S,...s,date:S.date};render()});
+</script></body></html>
